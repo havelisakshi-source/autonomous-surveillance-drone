@@ -1,97 +1,45 @@
-import asyncio
-from mavsdk import System
+import subprocess
+import numpy as np
+import cv2
 
-async def print_position(drone):
-    async for position in drone.telemetry.position():
-        print(f"lat: {position.latitude_deg:.6f}, lon: {position.longitude_deg:.6f}, alt: {position.relative_altitude_m:.1f}m")
+WIDTH, HEIGHT = 1280, 960
 
-async def run():
-    drone = System()
-    await drone.connect(system_address="udpin://0.0.0.0:14540")
+def start_ffmpeg():
+    cmd = [
+        "ffmpeg",
+        "-protocol_whitelist", "file,udp,rtp",
+        "-i", "stream.sdp",
+        "-f", "rawvideo",
+        "-pix_fmt", "bgr24",
+        "pipe:1"
+    ]
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=10**8)
 
-    print("Waiting for drone to connect...")
-    async for state in drone.core.connection_state():
-        if state.is_connected:
-            print("-- Connected to drone!")
-            break
+def main():
+    proc = start_ffmpeg()
+    frame_size = WIDTH * HEIGHT * 3
 
-    print("-- Waiting for drone to be ready to arm")
-    async for health in drone.telemetry.health():
-        print("global_position_ok:", health.is_global_position_ok,
-              "home_position_ok:", health.is_home_position_ok,
-              "local_position_ok:", health.is_local_position_ok,
-              "armable:", health.is_armable)
-        if health.is_armable:
-            print("-- Drone is ready to arm")
-            break
-        await asyncio.sleep(1)
-
-    print("-- Reading home altitude")
-    async for position in drone.telemetry.position():
-        home_abs_alt = position.absolute_altitude_m
-        print(f"Home absolute altitude: {home_abs_alt:.1f}m AMSL")
-        break
-
-    print("-- Arming")
-    armed = False
-    for attempt in range(10):
-        try:
-            await drone.action.arm()
-            print("-- Armed successfully")
-            armed = True
-            break
-        except Exception as e:
-            print(f"Arm attempt {attempt+1} failed: {e}")
-            await asyncio.sleep(2)
-
-    if not armed:
-        print("-- Could not arm after multiple attempts, exiting")
-        return
-
-    position_task = None
+    print("Reading camera stream... press 'q' in the window to quit")
 
     try:
-        print("-- Setting takeoff altitude")
-        await drone.action.set_takeoff_altitude(5)
-
-        print("-- Taking off")
-        await drone.action.takeoff()
-        await asyncio.sleep(8)
-
-        position_task = asyncio.ensure_future(print_position(drone))
-
-        # patrol route: small offsets from home, forming a simple loop
-        waypoints = [
-            (47.3980, 8.5460),
-            (47.3982, 8.5462),
-            (47.3980, 8.5464),
-            (47.3978, 8.5462),
-        ]
-        target_alt = home_abs_alt + 10
-        yaw = 0
-
-        for i, (lat, lon) in enumerate(waypoints, start=1):
-            print(f"-- Flying to waypoint {i}: {lat}, {lon}")
-            await drone.action.goto_location(lat, lon, target_alt, yaw)
-            await asyncio.sleep(12)  # give it time to arrive before the next leg
-
-        print("-- Patrol complete, returning to launch")
-        await drone.action.return_to_launch()
-
-        # wait until it's actually landed and disarmed before ending the script
-        async for is_armed in drone.telemetry.armed():
-            if not is_armed:
-                print("-- Landed and disarmed at home")
+        while True:
+            raw_frame = proc.stdout.read(frame_size)
+            if len(raw_frame) != frame_size:
+                print(f"Got {len(raw_frame)} bytes, expected {frame_size}")
+                stderr_output = proc.stderr.read(2000)
+                print("ffmpeg says:", stderr_output.decode(errors="ignore"))
                 break
-            await asyncio.sleep(2)
 
+            frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
+            cv2.imshow("Drone Camera", frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
     except Exception as e:
-        print(f"-- Error during flight: {e}")
-        print("-- Triggering emergency return to launch")
-        await drone.action.return_to_launch()
-
+        print("Python error:", e)
     finally:
-        if position_task:
-            position_task.cancel()
+        proc.terminate()
+        cv2.destroyAllWindows()
 
-asyncio.run(run())
+if __name__ == "__main__":
+    main()
