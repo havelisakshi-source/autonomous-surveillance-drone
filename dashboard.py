@@ -109,6 +109,7 @@ def log_alert(label, confidence):
 def camera_detection_loop():
     print("-- Loading YOLO model...")
     model = YOLO("yolov8n.pt")
+    fire_model = YOLO("fire_smoke.pt")
     proc = start_ffmpeg()
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video_writer = cv2.VideoWriter('demo_recording.mp4', fourcc, 20.0, (WIDTH, HEIGHT))
@@ -136,9 +137,17 @@ def camera_detection_loop():
                 if not was_detected:
                     log_alert(label, confidence)
 
+        fire_results = fire_model(frame, verbose=False)
+        fire_boxes = fire_results[0].boxes
+        for box in fire_boxes:
+            label = fire_model.names[int(box.cls)]
+            confidence = float(box.conf)
+            log_alert(label, confidence)            
+
         was_detected = person_found
 
         annotated_frame = results[0].plot()
+        annotated_frame = fire_results[0].plot(img=annotated_frame)
         video_writer.write(annotated_frame)
         success, jpeg = cv2.imencode(".jpg", annotated_frame)
         if success:
