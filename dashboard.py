@@ -110,6 +110,8 @@ def camera_detection_loop():
     print("-- Loading YOLO model...")
     model = YOLO("yolov8n.pt")
     proc = start_ffmpeg()
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter('demo_recording.mp4', fourcc, 20.0, (WIDTH, HEIGHT))
     frame_size = WIDTH * HEIGHT * 3
 
     was_detected = False
@@ -137,11 +139,13 @@ def camera_detection_loop():
         was_detected = person_found
 
         annotated_frame = results[0].plot()
+        video_writer.write(annotated_frame)
         success, jpeg = cv2.imencode(".jpg", annotated_frame)
         if success:
             latest_frame["jpeg"] = jpeg.tobytes()
 
     proc.terminate()
+    video_writer.release()
     print("-- Camera detection thread stopped")
 
 
