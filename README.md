@@ -16,3 +16,8 @@ AI-powered multi-purpose autonomous drone project — built and tested entirely 
 ## Next steps
 - Add camera feed via Gazebo simulation
 - Integrate YOLO for object/person detection
+
+## Verified working
+- Confirmed autonomous flight: takeoff, multi-waypoint patrol, return-to-launch, clean landing
+- Confirmed live camera feed from Gazebo (RTP video via ffmpeg)
+- Confirmed YOLOv8 person detection on a spawned Gazebo model, correctly identified with high confidence
