@@ -1,0 +1,53 @@
+-- Loading YOLO model...
+-- Dashboard running at http://localhost:8000
+-- Camera detection thread started
+Waiting for drone to connect...
+-- Connected to drone!
+-- Waiting for drone to be ready to arm
+-- Drone is ready to arm
+-- Reading home altitude-- Dashboard running at http://localhost:8000
+Waiting for drone to connect...
+-- Connected to drone!
+-- Waiting for drone to be ready to arm
+-- Camera detection thread started
+Traceback (most recent call last):
+  File "/home/sakshi/Desktop/Drone/dashboard.py", line 269, in <module>
+    asyncio.run(run())
+    ~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/sakshi/Desktop/Drone/dashboard.py", line 202, in run
+    async for health in drone.telemetry.health():
+    ...<3 lines>...
+        await asyncio.sleep(1)
+  File "/home/sakshi/Desktop/Drone/venv/lib/python3.14/site-packages/mavsdk/telemetry.py", line 3584, in health
+    async for response in health_stream:
+        yield Health.translate_from_rpc(response.health)
+  File "/home/sakshi/Desktop/Drone/venv/lib/python3.14/site-packages/grpc/aio/_call.py", line 366, in _fetch_stream_responses
+    await self._raise_for_status()
+  File "/home/sakshi/Desktop/Drone/venv/lib/python3.14/site-packages/grpc/aio/_call.py", line 274, in _raise_for_status
+    raise _create_rpc_error(
+    ...<2 lines>...
+    )
+grpc.aio._call.AioRpcError: <AioRpcError of RPC that terminated with:
+	status = StatusCode.UNAVAILABLE
+	details = "Stream removed (Socket closed)"
+	debug_error_string = "UNAVAILABLE:Stream removed (Socket closed)"
+>
+Exception ignored while joining a thread in _thread._shutdown():
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/threading.py", line 1583, in _shutdown
+    _thread_shutdown()
+KeyboardInterrupt: 
+Exception ignored while calling deallocator <function System.__del__ at 0x7a6807aa85c0>:
+Traceback (most recent call last):
+  File "/home/sakshi/Desktop/Drone/venv/lib/python3.14/site-packages/mavsdk/system.py", line 146, in __del__
+  File "/home/sakshi/Desktop/Drone/venv/lib/python3.14/site-packages/mavsdk/system.py", line 186, in _stop_mavsdk_server
+ImportError: sys.meta_path is None, Python is likely shutting down

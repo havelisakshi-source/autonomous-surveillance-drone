@@ -96,6 +96,8 @@ def start_ffmpeg():
 
 
 def log_alert(label, confidence):
+    if drone_state["lat"] is None:
+        return
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lat = drone_state["lat"]
     lon = drone_state["lon"]
@@ -116,6 +118,7 @@ def camera_detection_loop():
     frame_size = WIDTH * HEIGHT * 3
 
     was_detected = False
+    was_fire_detected = False
 
     print("-- Camera detection thread started")
 
@@ -128,6 +131,9 @@ def camera_detection_loop():
         results = model(frame, verbose=False)
         boxes = results[0].boxes
 
+        all_labels = [model.names[int(box.cls)] for box in boxes]
+        print("Frame sees:", all_labels)
+
         person_found = False
         for box in boxes:
             label = model.names[int(box.cls)]
@@ -139,12 +145,18 @@ def camera_detection_loop():
 
         fire_results = fire_model(frame, verbose=False)
         fire_boxes = fire_results[0].boxes
+        fire_or_smoke_found = False
         for box in fire_boxes:
             label = fire_model.names[int(box.cls)]
             confidence = float(box.conf)
-            log_alert(label, confidence)            
+            if confidence > 0.5:
+                fire_or_smoke_found = True
+                if not was_fire_detected:
+                    log_alert(label, confidence)                        
 
         was_detected = person_found
+        
+        was_fire_detected = fire_or_smoke_found
 
         annotated_frame = results[0].plot()
         annotated_frame = fire_results[0].plot(img=annotated_frame)
@@ -216,7 +228,7 @@ async def run():
 
         print("-- Taking off")
         await drone.action.takeoff()
-        await asyncio.sleep(8)
+        await asyncio.sleep(15)  
 
         waypoints = [
             (47.3980, 8.5460),
@@ -224,7 +236,7 @@ async def run():
             (47.3980, 8.5464),
             (47.3978, 8.5462),
         ]
-        target_alt = home_abs_alt + 10
+        target_alt = home_abs_alt + 12
         yaw = 0
 
         for i, (lat, lon) in enumerate(waypoints, start=1):
