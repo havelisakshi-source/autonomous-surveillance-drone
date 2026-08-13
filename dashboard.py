@@ -114,7 +114,7 @@ def camera_detection_loop():
     fire_model = YOLO("fire_smoke.pt")
     proc = start_ffmpeg()
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter('demo_recording.mp4', fourcc, 20.0, (WIDTH, HEIGHT))
+    video_writer = cv2.VideoWriter('demo_recording.mp4', fourcc, 6.0, (WIDTH, HEIGHT))
     frame_size = WIDTH * HEIGHT * 3
 
     was_detected = False
@@ -266,4 +266,10 @@ async def run():
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        print("-- Stopping...")
+    finally:
+        stop_camera.set()
+        time.sleep(1)
