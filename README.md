@@ -27,3 +27,10 @@ AI-powered multi-purpose autonomous drone project — built and tested entirely 
 Built and debugged an end-to-end autonomous drone system in simulation: PX4 flight control (Docker-based SITL), MAVSDK-Python for autonomous multi-waypoint patrol with automatic return-to-home, a live camera feed streamed from Gazebo via RTP/ffmpeg, real-time YOLOv8 person detection, GPS-tagged alert logging, and a FastAPI web dashboard showing the live feed and recent alerts.
 
 Along the way, debugged real infrastructure issues rather than following a fixed tutorial: Docker port-binding conflicts between the container's proxy and the local script, PX4 preflight/arming-check failures requiring a proper health-check retry loop, RTP video stream decoding via ffmpeg subprocess piping (no GStreamer dependency), and coordinating an async flight loop with a background video-processing thread sharing live GPS state.
+
+## Update (Aug 13)
+- Fixed a bug where alerts logged before the drone's first GPS fix showed None for coordinates — now guarded so alerts only log once real position data is available
+- Fixed fire/smoke detection spamming low-confidence false positives — added a confidence threshold (>0.5) and deduplication, matching the person-detection logic
+- Fixed video recording corruption caused by abrupt shutdown on Ctrl+C — the camera thread now closes and finalizes the video file properly before exit
+- Fixed video playback lag by correcting the declared frame rate to match actual capture speed
+- Diagnosed and resolved a host-level network issue (Docker multicast traffic being rejected) that was silently blocking PX4 from becoming armable — required a full system restart to clear
