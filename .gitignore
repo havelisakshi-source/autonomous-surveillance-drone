@@ -1,1 +1,6 @@
 venv/
+detections.csv
+demo_recording.mp4
+flight_log.txt
+*.ulg
+__pycache__/
