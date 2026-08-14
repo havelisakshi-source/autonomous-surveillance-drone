@@ -180,6 +180,27 @@ async def print_position(drone):
         drone_state["lon"] = round(position.longitude_deg, 6)
         drone_state["alt"] = round(position.relative_altitude_m, 1)
 
+LOW_BATTERY_THRESHOLD = 20  # percent
+
+async def monitor_battery(drone):
+    async for battery in drone.telemetry.battery():
+        percent = battery.remaining_percent * 100
+        if percent < LOW_BATTERY_THRESHOLD:
+            print(f"-- SAFETY: battery low ({percent:.0f}%), triggering return to launch")
+            await drone.action.return_to_launch()
+            break
+        await asyncio.sleep(2)        
+
+async def monitor_health(drone):
+    async for health in drone.telemetry.health():
+        if not health.is_local_position_ok or not health.is_global_position_ok:
+            print("-- SAFETY: lost reliable position mid-flight, triggering return to launch")
+            try:
+                await drone.action.return_to_launch()
+            except Exception as e:
+                print(f"-- SAFETY: return_to_launch failed: {e}")
+            break
+        await asyncio.sleep(2)
 
 async def run():
     camera_thread = threading.Thread(target=camera_detection_loop, daemon=True)
@@ -221,6 +242,8 @@ async def run():
             await asyncio.sleep(2)
 
     position_task = asyncio.ensure_future(print_position(drone))
+    battery_task = asyncio.ensure_future(monitor_battery(drone))
+    health_task = asyncio.ensure_future(monitor_health(drone))
 
     try:
         print("-- Setting takeoff altitude")
@@ -239,7 +262,14 @@ async def run():
         target_alt = home_abs_alt + 12
         yaw = 0
 
+        # define a safe zone around home (roughly ±0.01 degrees, a few hundred meters)
+        home_lat, home_lon = 47.397971, 8.546163
+        GEOFENCE_RADIUS = 0.01
+
         for i, (lat, lon) in enumerate(waypoints, start=1):
+            if abs(lat - home_lat) > GEOFENCE_RADIUS or abs(lon - home_lon) > GEOFENCE_RADIUS:
+                print(f"-- SAFETY: waypoint {i} ({lat}, {lon}) is outside the geofence, skipping")
+                continue
             print(f"-- Flying to waypoint {i}: {lat}, {lon}")
             await drone.action.goto_location(lat, lon, target_alt, yaw)
             await asyncio.sleep(12)
@@ -259,6 +289,8 @@ async def run():
 
     finally:
         position_task.cancel()
+        battery_task.cancel()
+        health_task.cancel()
         # keep the dashboard running after landing so you can still browse it
         print("-- Flight complete. Dashboard still running at http://localhost:8000 — press Ctrl+C to stop everything.")
         while True:
