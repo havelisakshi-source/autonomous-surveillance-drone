@@ -15,6 +15,7 @@ WIDTH, HEIGHT = 1280, 960
 ALERT_LOG_FILE = "detections.csv"
 
 drone_state = {"lat": None, "lon": None, "alt": None}
+mission_status = {"text": "Not started"}
 latest_frame = {"jpeg": None}
 stop_camera = threading.Event()
 
@@ -36,6 +37,7 @@ def index():
     </head>
     <body>
         <h1>Autonomous Surveillance Drone - Live Feed</h1>
+        <h2 id="status">Status: Loading...</h2>
         <img src="/video">
         <h2>Recent Alerts</h2>
         <table id="alerts">
@@ -51,8 +53,15 @@ def index():
                     table.innerHTML += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td></tr>`;
                 });
             }
+            async function loadStatus() {
+                const res = await fetch('/status');
+                const data = await res.json();
+                document.getElementById('status').innerText = "Status: " + data.text;
+            }
             setInterval(loadAlerts, 2000);
+            setInterval(loadStatus, 2000);
             loadAlerts();
+            loadStatus();
         </script>
     </body>
     </html>
@@ -74,6 +83,9 @@ def video():
 
 @app.get("/alerts")
 def alerts():
+    @app.get("/status")
+    def status():
+        return {"text": mission_status["text"]}
     try:
         with open(ALERT_LOG_FILE, "r") as f:
             lines = f.readlines()[-10:]
@@ -251,6 +263,7 @@ async def run():
 
         print("-- Taking off")
         await drone.action.takeoff()
+        mission_status["text"] = "Taking off"
         await asyncio.sleep(15)  
 
         waypoints = [
@@ -275,11 +288,13 @@ async def run():
             await asyncio.sleep(12)
 
         print("-- Patrol complete, returning to launch")
+        mission_status["text"] = "Returning to launch"
         await drone.action.return_to_launch()
 
         async for is_armed in drone.telemetry.armed():
             if not is_armed:
                 print("-- Landed and disarmed at home")
+                mission_status["text"] = "Landed"
                 break
             await asyncio.sleep(2)
 
