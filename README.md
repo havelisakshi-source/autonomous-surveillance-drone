@@ -34,3 +34,7 @@ Along the way, debugged real infrastructure issues rather than following a fixed
 - Fixed video recording corruption caused by abrupt shutdown on Ctrl+C — the camera thread now closes and finalizes the video file properly before exit
 - Fixed video playback lag by correcting the declared frame rate to match actual capture speed
 - Diagnosed and resolved a host-level network issue (Docker multicast traffic being rejected) that was silently blocking PX4 from becoming armable — required a full system restart to clear
+
+## Update (Aug 14)
+- Added a live mission status indicator to the dashboard (Not started / Taking off / Returning to launch / Landed), polled every 2 seconds alongside the alerts table
+- Added geofencing, low-battery return-to-home, and health-based safety monitoring to the flight logic
