@@ -38,3 +38,7 @@ Along the way, debugged real infrastructure issues rather than following a fixed
 ## Update (Aug 14)
 - Added a live mission status indicator to the dashboard (Not started / Taking off / Returning to launch / Landed), polled every 2 seconds alongside the alerts table
 - Added geofencing, low-battery return-to-home, and health-based safety monitoring to the flight logic
+
+## Update (Aug 14)
+- Added a live mission status indicator to the dashboard (Not started / Taking off / Returning to launch / Landed), polled every 2 seconds alongside the alerts table
+- Added geofencing, low-battery return-to-home, and health-based safety monitoring to the flight logic
