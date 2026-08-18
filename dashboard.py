@@ -16,6 +16,7 @@ ALERT_LOG_FILE = "detections.csv"
 
 drone_state = {"lat": None, "lon": None, "alt": None}
 mission_status = {"text": "Not started"}
+alert_count = {"total": 0}
 latest_frame = {"jpeg": None}
 stop_camera = threading.Event()
 
@@ -38,6 +39,7 @@ def index():
     <body>
         <h1>Autonomous Surveillance Drone - Live Feed</h1>
         <h2 id="status">Status: Loading...</h2>
+        <h2 id="alert_count">Total Alerts: 0</h2>
         <img src="/video">
         <h2>Recent Alerts</h2>
         <table id="alerts">
@@ -58,10 +60,17 @@ def index():
                 const data = await res.json();
                 document.getElementById('status').innerText = "Status: " + data.text;
             }
+            async function loadAlertCount() {
+                const res = await fetch('/alert_count');
+                const data = await res.json();
+                document.getElementById('alert_count').innerText = "Total Alerts: " + data.total;
+            }
             setInterval(loadAlerts, 2000);
             setInterval(loadStatus, 2000);
+            setInterval(loadAlertCount, 2000);
             loadAlerts();
             loadStatus();
+            loadAlertCount();
         </script>
     </body>
     </html>
@@ -86,6 +95,9 @@ def alerts():
     @app.get("/status")
     def status():
         return {"text": mission_status["text"]}
+    @app.get("/alert_count")
+    def get_alert_count():
+        return {"total": alert_count["total"]}    
     try:
         with open(ALERT_LOG_FILE, "r") as f:
             lines = f.readlines()[-10:]
@@ -110,6 +122,7 @@ def start_ffmpeg():
 def log_alert(label, confidence):
     if drone_state["lat"] is None:
         return
+    alert_count["total"] += 1    
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lat = drone_state["lat"]
     lon = drone_state["lon"]
@@ -184,6 +197,7 @@ def camera_detection_loop():
 
 def run_server():
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
+    
 
 
 async def print_position(drone):
