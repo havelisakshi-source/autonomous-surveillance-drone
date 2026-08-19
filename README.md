@@ -38,3 +38,7 @@ Along the way, debugged real infrastructure issues rather than following a fixed
 ## Update (Aug 14)
 - Added a live mission status indicator to the dashboard (Not started / Taking off / Returning to launch / Landed), polled every 2 seconds alongside the alerts table
 - Added geofencing, low-battery return-to-home, and health-based safety monitoring to the flight logic
+
+## Update (Aug 19)
+- Added an interactive mission-planner map (Leaflet.js) to the dashboard — click anywhere on the map to set waypoints, then press "Start Mission" to send them to the drone in real time, replacing the previous hardcoded waypoint list
+- Fixed two structural bugs during development: a Python scoping issue where routes were accidentally nested inside another function, and a matching JavaScript issue where the map setup and mission button were nested inside a function that ran on a timer, silently breaking both
