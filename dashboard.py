@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 from mavsdk import System
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 import uvicorn
 
@@ -29,6 +29,8 @@ def index():
     <html>
     <head>
         <title>Drone Dashboard</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
             body { font-family: sans-serif; background: #111; color: #eee; text-align: center; }
             img { max-width: 90%; border: 2px solid #444; margin-top: 20px; }
@@ -40,12 +42,39 @@ def index():
         <h1>Autonomous Surveillance Drone - Live Feed</h1>
         <h2 id="status">Status: Loading...</h2>
         <h2 id="alert_count">Total Alerts: 0</h2>
+        <div id="map" style="height: 400px; width: 80%; margin: 20px auto;"></div>
+        <button onclick="startMission()" style="padding: 10px 20px; font-size: 16px; margin-bottom: 20px;">Start Mission</button>
         <img src="/video">
         <h2>Recent Alerts</h2>
         <table id="alerts">
             <tr><th>Time</th><th>Label</th><th>Confidence</th><th>Lat</th><th>Lon</th><th>Alt</th></tr>
         </table>
         <script>
+            var map = L.map('map').setView([47.397971, 8.546163], 17);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            L.marker([47.397971, 8.546163]).addTo(map).bindPopup("Home");
+            var clickedWaypoints = [];
+
+            map.on('click', function(e) {
+                var lat = e.latlng.lat.toFixed(6);
+                var lon = e.latlng.lng.toFixed(6);
+                clickedWaypoints.push([lat, lon]);
+                L.marker([lat, lon]).addTo(map).bindPopup("Waypoint " + clickedWaypoints.length);
+                console.log("Waypoints so far:", clickedWaypoints);
+            });
+
+            async function startMission() {
+                const response = await fetch('/set_waypoints', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({waypoints: clickedWaypoints})
+                });
+                const result = await response.json();
+                alert("Mission sent: " + result.message);
+            }
+
             async function loadAlerts() {
                 const res = await fetch('/alerts');
                 const data = await res.json();
@@ -90,14 +119,28 @@ def video():
     return StreamingResponse(mjpeg_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 
+mission_waypoints = {"list": []}
+
+
+@app.get("/status")
+def status():
+    return {"text": mission_status["text"]}
+
+
+@app.get("/alert_count")
+def get_alert_count():
+    return {"total": alert_count["total"]}
+
+
+@app.post("/set_waypoints")
+async def set_waypoints(request: Request):
+    data = await request.json()
+    mission_waypoints["list"] = data["waypoints"]
+    return {"message": f"Received {len(data['waypoints'])} waypoints"}
+
+
 @app.get("/alerts")
 def alerts():
-    @app.get("/status")
-    def status():
-        return {"text": mission_status["text"]}
-    @app.get("/alert_count")
-    def get_alert_count():
-        return {"total": alert_count["total"]}    
     try:
         with open(ALERT_LOG_FILE, "r") as f:
             lines = f.readlines()[-10:]
@@ -280,12 +323,12 @@ async def run():
         mission_status["text"] = "Taking off"
         await asyncio.sleep(15)  
 
-        waypoints = [
-            (47.3980, 8.5460),
-            (47.3982, 8.5462),
-            (47.3980, 8.5464),
-            (47.3978, 8.5462),
-        ]
+        print("-- Waiting for you to click waypoints on the map and press Start Mission...")
+        while len(mission_waypoints["list"]) == 0:
+            await asyncio.sleep(1)
+
+        waypoints = [(float(lat), float(lon)) for lat, lon in mission_waypoints["list"]]
+        print(f"-- Received {len(waypoints)} waypoints from the map, starting mission")
         target_alt = home_abs_alt + 12
         yaw = 0
 
