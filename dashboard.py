@@ -57,6 +57,22 @@ def index():
             L.marker([47.397971, 8.546163]).addTo(map).bindPopup("Home");
             var clickedWaypoints = [];
 
+            var droneMarker = null;
+
+            async function updateDronePosition() {
+                const res = await fetch('/drone_position');
+                const data = await res.json();
+                if (data.lat !== null && data.lon !== null) {
+                    if (droneMarker === null) {
+                        droneMarker = L.marker([data.lat, data.lon], {
+                            title: "Drone"
+                        }).addTo(map).bindPopup("Drone");
+                    } else {
+                        droneMarker.setLatLng([data.lat, data.lon]);
+                    }
+                }
+            }
+
             map.on('click', function(e) {
                 var lat = e.latlng.lat.toFixed(6);
                 var lon = e.latlng.lng.toFixed(6);
@@ -97,9 +113,11 @@ def index():
             setInterval(loadAlerts, 2000);
             setInterval(loadStatus, 2000);
             setInterval(loadAlertCount, 2000);
+            setInterval(updateDronePosition, 2000);
             loadAlerts();
             loadStatus();
             loadAlertCount();
+            updateDronePosition();
         </script>
     </body>
     </html>
@@ -125,6 +143,10 @@ mission_waypoints = {"list": []}
 @app.get("/status")
 def status():
     return {"text": mission_status["text"]}
+
+@app.get("/drone_position")
+def drone_position():
+    return {"lat": drone_state["lat"], "lon": drone_state["lon"], "alt": drone_state["alt"]}
 
 
 @app.get("/alert_count")
