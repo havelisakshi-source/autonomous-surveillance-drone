@@ -55,6 +55,10 @@ def index():
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
             L.marker([47.397971, 8.546163]).addTo(map).bindPopup("Home");
+            L.rectangle([
+                [47.397971 - 0.01, 8.546163 - 0.01],
+                [47.397971 + 0.01, 8.546163 + 0.01]
+            ], {color: "orange", weight: 2, fillOpacity: 0.05}).addTo(map).bindPopup("Safe zone boundary");
             var clickedWaypoints = [];
 
             var droneMarker = null;
