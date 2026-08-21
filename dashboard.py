@@ -83,7 +83,16 @@ def index():
                 clickedWaypoints.push([lat, lon]);
                 L.marker([lat, lon]).addTo(map).bindPopup("Waypoint " + clickedWaypoints.length);
                 console.log("Waypoints so far:", clickedWaypoints);
-            });
+
+                if (flightPathLine !== null) {
+                    map.removeLayer(flightPathLine);
+                }
+                if (clickedWaypoints.length > 1) {
+                    flightPathLine = L.polyline(clickedWaypoints, {color: "cyan", weight: 3}).addTo(map);
+                }
+            });  
+
+            var flightPathLine = null;
 
             async function startMission() {
                 const response = await fetch('/set_waypoints', {
